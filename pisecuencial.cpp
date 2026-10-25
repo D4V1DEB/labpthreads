@@ -1,5 +1,10 @@
 #include <iostream>
 #include <chrono>
+#include <vector>
+#include <cmath>
+#include <fstream>
+#include <iomanip>
+
 using namespace std;
 
 double calcular_pi_secuencial(long long n) {
@@ -15,15 +20,22 @@ double calcular_pi_secuencial(long long n) {
 }
 
 int main() {
-    long long n = 10000000;
+    vector<long long> tamanos = {1000000LL, 10000000LL, 100000000LL, 1000000000LL};
 
-    auto start_time = chrono::high_resolution_clock::now();
-    double pi = calcular_pi_secuencial(n);
-    auto end_time = chrono::high_resolution_clock::now();
-    chrono::duration<double> duration = end_time - start_time;
-    
-    cout.precision(15);
-    cout << "pi- " << pi << endl;
-    cout << "tiempo- " << duration.count() << endl;
+    ofstream csv("tiempos_secuencial.csv");
+    csv << "n,tiempo,pi_calculado,error\n";
+
+    for (long long n : tamanos) {
+        auto start_time = chrono::high_resolution_clock::now();
+        double pi = calcular_pi_secuencial(n);
+        auto end_time = chrono::high_resolution_clock::now();
+
+        chrono::duration<double> duration = end_time - start_time;
+        double error = std::abs(pi - M_PI);
+
+        csv << n << "," << fixed << setprecision(9) << duration.count() << "," << setprecision(15) << pi << "," << scientific << error << "\n";
+    }
+
+    csv.close();
     return 0;
 }
