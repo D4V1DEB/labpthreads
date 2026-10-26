@@ -31,21 +31,43 @@ def main():
     thread_to_x = {t: i for i, t in enumerate(threads_list)}
     thread_labels = [f'{t} threads' for t in threads_list]
 
-    # 1
-    plt.figure(figsize=(10, 6))
-    plt.plot(df_sec['n'], df_sec['tiempo'], marker='o', linewidth=2.5, markersize=7, color='black', label='Secuencial')
+    # 1. Gráfica de Tiempos por tamaño en escala lineal
+    fig, axes = plt.subplots(2, 3, figsize=(16, 9))
+    all_x_labels = ['Sec'] + [f'{t}th' for t in threads_list]
+    x_positions = list(range(len(all_x_labels)))
+    axes_flat = axes.flatten()
 
-    for t in threads_list:
-        sub = df_pth[df_pth['threads'] == t]
-        plt.plot(sub['n'], sub['tiempo'], marker='s', linewidth=2, markersize=6, label=f'{t} threads')
+    for idx, n_val in enumerate(unique_n):
+        ax = axes_flat[idx]
+        t_sec = sec_times[n_val]
+        sub = df_pth[df_pth['n'] == n_val].sort_values('threads')
+        
+        y_vals = [t_sec] + list(sub['tiempo'])
+        use_ms = (t_sec < 0.25)
+        scale = 1000.0 if use_ms else 1.0
+        unit = 'ms' if use_ms else 's'
+        y_scaled = [y * scale for y in y_vals]
+        
+        ax.plot(x_positions, y_scaled, marker='o', linewidth=2.5, markersize=7, color='#1f77b4')
+        ax.plot(0, y_scaled[0], marker='s', markersize=9, color='crimson', label='Secuencial')
+        ax.plot(x_positions[1:], y_scaled[1:], marker='o', markersize=7, color='#1f77b4', linestyle='None', label='Pthreads')
+        
+        for i, (xp, yp) in enumerate(zip(x_positions, y_scaled)):
+            ax.annotate(f'{yp:.1f}{unit}' if use_ms else f'{yp:.2f}{unit}', (xp, yp), 
+                        textcoords="offset points", xytext=(0, 7 if (i % 2 == 0) else -13),
+                        ha='center', fontsize=9, fontweight='bold')
+        
+        ax.set_title(f'Matriz {n_val}x{n_val}', fontsize=12, fontweight='bold', pad=10)
+        ax.set_xlabel('Hilos', fontsize=10)
+        ax.set_ylabel(f'Tiempo ({unit})', fontsize=10)
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(all_x_labels, fontsize=9)
+        ax.set_ylim(0, max(y_scaled) * 1.25)
+        ax.legend(fontsize=9, loc='upper right')
+        ax.grid(True, ls="--", alpha=0.6)
 
-    plt.yscale('log')
-    plt.title('Multiplicación Matriz-Vector: Tiempo de Ejecución vs N', fontsize=14, fontweight='bold', pad=15)
-    plt.xlabel('Dimensión de la Matriz N (Matriz N x N)', fontsize=12)
-    plt.ylabel('Tiempo de Ejecución (segundos, escala log)', fontsize=12)
-    plt.xticks(unique_n, [f'{n}x{n}' for n in unique_n])
-    plt.legend(fontsize=10, loc='upper left')
-    plt.grid(True, which="both", ls="--", alpha=0.5)
+    fig.delaxes(axes_flat[5])
+    plt.suptitle('Multiplicación Matriz-Vector: Tiempo Secuencial vs Pthreads por Tamaño', fontsize=14, fontweight='bold', y=0.995)
     plt.tight_layout()
     plt.savefig("grafica_matvec_tiempos.png", dpi=300)
     plt.close()

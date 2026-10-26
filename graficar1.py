@@ -31,21 +31,44 @@ def main():
     thread_to_x = {t: i for i, t in enumerate(threads_list)}
     thread_labels = [f'{t} threads' for t in threads_list]
 
-    # 1
-    plt.figure(figsize=(10, 6))
-    plt.plot(df_sec['n'], df_sec['tiempo'], marker='o', linewidth=2.5, markersize=7, color='black', label='Secuencial')
+    # 1. Gráfica de Tiempos (Cuadrícula 2x2 por tamaño de problema en escala lineal)
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    target_ns = [1000000, 10000000, 100000000, 1000000000]
+    titles = ['N = 1 Millón (10^6)', 'N = 10 Millones (10^7)', 
+              'N = 100 Millones (10^8)', 'N = 1000 Millones (10^9)']
 
-    for t in threads_list:
-        sub = df_pth[df_pth['threads'] == t]
-        plt.plot(sub['n'], sub['tiempo'], marker='s', linewidth=2, markersize=6, label=f'{t} threads')
+    all_x_labels = ['Sec'] + [f'{t}th' for t in threads_list]
+    x_positions = list(range(len(all_x_labels)))
 
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.title('Tiempo de Ejecución vs Tamaño del Problema (N)', fontsize=14, fontweight='bold', pad=15)
-    plt.xlabel('Tamaño del Problema N (Iteraciones)', fontsize=12)
-    plt.ylabel('Tiempo de Ejecución (segundos, escala log)', fontsize=12)
-    plt.legend(fontsize=10, loc='upper left')
-    plt.grid(True, which="both", ls="--", alpha=0.5)
+    for idx, n_val in enumerate(target_ns):
+        ax = axes[idx // 2, idx % 2]
+        t_sec = sec_times[n_val]
+        sub = df_pth[df_pth['n'] == n_val].sort_values('threads')
+        
+        y_vals = [t_sec] + list(sub['tiempo'])
+        use_ms = (t_sec < 0.05)
+        scale = 1000.0 if use_ms else 1.0
+        unit = 'ms' if use_ms else 's'
+        y_scaled = [y * scale for y in y_vals]
+        
+        ax.plot(x_positions, y_scaled, marker='o', linewidth=2.5, markersize=8, color='#1f77b4')
+        ax.plot(0, y_scaled[0], marker='s', markersize=10, color='crimson', label='Secuencial')
+        ax.plot(x_positions[1:], y_scaled[1:], marker='o', markersize=8, color='#1f77b4', linestyle='None', label='Pthreads')
+        
+        for i, (xp, yp) in enumerate(zip(x_positions, y_scaled)):
+            ax.annotate(f'{yp:.2f}{unit}', (xp, yp), textcoords="offset points", 
+                        xytext=(0, 8 if (i % 2 == 0) else -14), ha='center', fontsize=9, fontweight='bold')
+        
+        ax.set_title(titles[idx], fontsize=13, fontweight='bold', pad=12)
+        ax.set_xlabel('Configuración de Hilos', fontsize=11)
+        ax.set_ylabel(f'Tiempo de Ejecución ({unit})', fontsize=11)
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(all_x_labels, fontsize=10)
+        ax.set_ylim(0, max(y_scaled) * 1.25)
+        ax.legend(fontsize=10, loc='upper right')
+        ax.grid(True, ls="--", alpha=0.6)
+
+    plt.suptitle('Tiempo de Ejecución: Secuencial vs Pthreads (Por Tamaño del Problema)', fontsize=15, fontweight='bold', y=0.995)
     plt.tight_layout()
     plt.savefig("grafica_tiempos.png", dpi=300)
     plt.close()
